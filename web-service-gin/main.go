@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func goDotEnvVariable(key string) string {
@@ -59,9 +60,12 @@ type note struct {
 }
 
 func getNotes(ctx *gin.Context) {
+	var limit, _ = strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	var page, _ = strconv.Atoi(ctx.DefaultQuery("page", "1"))
+
 	collection := client.Database("notes").Collection("notes")
 
-	cursor, err := collection.Find(context.TODO(), bson.D{})
+	cursor, err := collection.Find(context.TODO(), bson.D{}, options.Find().SetLimit(int64(limit)).SetSkip(int64((page-1)*limit)))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -72,13 +76,31 @@ func getNotes(ctx *gin.Context) {
 		}
 	}()
 
+	var count int64
+	count, err = collection.CountDocuments(context.TODO(), bson.D{})
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error counting notes"})
+		return
+	}
+
 	var notes []note
 	if err = cursor.All(context.TODO(), &notes); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error decoding notes"})
 		return
 	}
+	var pageInfo struct {
+		Total int64  `json:"total"`
+		Notes []note `json:"notes"`
+		Page  int    `json:"page"`
+		Limit int    `json:"limit"`
+	}
 
-	ctx.JSON(http.StatusOK, notes)
+	pageInfo.Notes = notes
+	pageInfo.Total = count
+	pageInfo.Limit = limit
+	pageInfo.Page = page
+
+	ctx.JSON(http.StatusOK, pageInfo)
 }
 
 func postNotes(ctx *gin.Context) {
@@ -98,7 +120,22 @@ func postNotes(ctx *gin.Context) {
 		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.IndentedJSON(http.StatusCreated, many.InsertedIDs)
+
+	filter := bson.M{"_id": bson.M{"$in": many.InsertedIDs}}
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer cursor.Close(context.TODO())
+
+	var storedNotes []note
+	if err = cursor.All(context.TODO(), &storedNotes); err != nil {
+		ctx.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.IndentedJSON(http.StatusCreated, storedNotes)
 }
 
 func getNoteById(ctx *gin.Context) {
