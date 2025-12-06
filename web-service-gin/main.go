@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
 )
 
 func goDotEnvVariable(key string) string {
@@ -59,9 +60,22 @@ type note struct {
 	Content string        `json:"content"`
 }
 
+const MaxLimit = 100
+
 func getNotes(ctx *gin.Context) {
-	var limit, _ = strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	var page, _ = strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	limitStr := ctx.DefaultQuery("limit", "10")
+	pageStr := ctx.DefaultQuery("page", "1")
+	var limit, err = strconv.Atoi(limitStr)
+	var page, err2 = strconv.Atoi(pageStr)
+
+	if err != nil || err2 != nil || limit <= 0 || page <= 0 {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid pagination parameters"})
+		return
+	}
+
+	if limit > MaxLimit {
+		limit = MaxLimit
+	}
 
 	collection := client.Database("notes").Collection("notes")
 
