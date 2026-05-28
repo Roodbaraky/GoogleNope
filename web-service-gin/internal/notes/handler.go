@@ -6,13 +6,13 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	"example/web-service-gin/internal/auth"
 )
 
 type Handler struct {
 	service *Service
 }
-
-const developmentUserID = "local-user"
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
@@ -33,7 +33,13 @@ func (handler *Handler) getNotes(ctx *gin.Context) {
 		return
 	}
 
-	pageInfo, err := handler.service.List(ctx.Request.Context(), currentUserID(ctx), page, limit)
+	userID, ok := currentUserID(ctx)
+	if !ok {
+		unauthorized(ctx)
+		return
+	}
+
+	pageInfo, err := handler.service.List(ctx.Request.Context(), userID, page, limit)
 	if err != nil {
 		internalServerError(ctx)
 		return
@@ -49,7 +55,13 @@ func (handler *Handler) postNotes(ctx *gin.Context) {
 		return
 	}
 
-	storedNote, err := handler.service.Create(ctx.Request.Context(), currentUserID(ctx), input)
+	userID, ok := currentUserID(ctx)
+	if !ok {
+		unauthorized(ctx)
+		return
+	}
+
+	storedNote, err := handler.service.Create(ctx.Request.Context(), userID, input)
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
 			abortWithError(ctx, http.StatusBadRequest, "Invalid note")
@@ -64,7 +76,13 @@ func (handler *Handler) postNotes(ctx *gin.Context) {
 }
 
 func (handler *Handler) getNoteByID(ctx *gin.Context) {
-	note, err := handler.service.FindByID(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"))
+	userID, ok := currentUserID(ctx)
+	if !ok {
+		unauthorized(ctx)
+		return
+	}
+
+	note, err := handler.service.FindByID(ctx.Request.Context(), userID, ctx.Param("id"))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidID):
@@ -88,7 +106,13 @@ func (handler *Handler) patchNote(ctx *gin.Context) {
 		return
 	}
 
-	note, err := handler.service.Update(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"), input)
+	userID, ok := currentUserID(ctx)
+	if !ok {
+		unauthorized(ctx)
+		return
+	}
+
+	note, err := handler.service.Update(ctx.Request.Context(), userID, ctx.Param("id"), input)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidID):
@@ -108,7 +132,13 @@ func (handler *Handler) patchNote(ctx *gin.Context) {
 }
 
 func (handler *Handler) deleteNote(ctx *gin.Context) {
-	err := handler.service.Delete(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"))
+	userID, ok := currentUserID(ctx)
+	if !ok {
+		unauthorized(ctx)
+		return
+	}
+
+	err := handler.service.Delete(ctx.Request.Context(), userID, ctx.Param("id"))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidID):
@@ -154,6 +184,10 @@ func internalServerError(ctx *gin.Context) {
 	abortWithError(ctx, http.StatusInternalServerError, "Internal server error")
 }
 
-func currentUserID(_ *gin.Context) string {
-	return developmentUserID
+func unauthorized(ctx *gin.Context) {
+	abortWithError(ctx, http.StatusUnauthorized, "Authentication required")
+}
+
+func currentUserID(ctx *gin.Context) (string, bool) {
+	return auth.CurrentUserID(ctx)
 }

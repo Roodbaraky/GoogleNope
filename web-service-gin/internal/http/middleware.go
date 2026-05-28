@@ -93,3 +93,40 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+func TrustedOrigins(allowedOrigins []string) gin.HandlerFunc {
+	allowed := make(map[string]struct{}, len(allowedOrigins))
+	allowAll := false
+
+	for _, origin := range allowedOrigins {
+		if origin == "*" {
+			allowAll = true
+			continue
+		}
+
+		allowed[origin] = struct{}{}
+	}
+
+	return func(ctx *gin.Context) {
+		if unsafeMethod(ctx.Request.Method) {
+			origin := ctx.GetHeader("Origin")
+			if origin != "" && !allowAll {
+				if _, ok := allowed[origin]; !ok {
+					AbortWithError(ctx, http.StatusForbidden, "Origin not allowed")
+					return
+				}
+			}
+		}
+
+		ctx.Next()
+	}
+}
+
+func unsafeMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}

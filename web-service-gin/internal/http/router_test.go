@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"example/web-service-gin/internal/auth"
 	"example/web-service-gin/internal/config"
 	"example/web-service-gin/internal/notes"
 )
@@ -53,6 +54,25 @@ func TestNewRouterSetsCORSForAllowedOrigin(t *testing.T) {
 
 	if got := response.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
 		t.Fatalf("expected credentials header, got %q", got)
+	}
+}
+
+func TestNewRouterRejectsUnsafeDisallowedOrigin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	router := NewRouter(RouterDependencies{Config: testConfig()})
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	request.Header.Set("Origin", "https://evil.example")
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d", http.StatusForbidden, response.Code)
+	}
+
+	if response.Body.String() != `{"error":"Origin not allowed"}` {
+		t.Fatalf("unexpected error response: %s", response.Body.String())
 	}
 }
 
@@ -103,6 +123,7 @@ func TestNewRouterAppliesMaxBodyBytes(t *testing.T) {
 	handler := notes.NewHandler(service)
 	router := NewRouter(RouterDependencies{
 		Config:       cfg,
+		AuthRequired: testAuthRequired(),
 		NotesHandler: handler,
 	})
 	response := httptest.NewRecorder()
@@ -120,6 +141,31 @@ func TestNewRouterAppliesMaxBodyBytes(t *testing.T) {
 	}
 }
 
+func TestNewRouterProtectsNoteRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repository := &fakeRepository{}
+	service := notes.NewService(repository)
+	handler := notes.NewHandler(service)
+	manager, err := auth.NewSessionManager("test-session-secret", false)
+	if err != nil {
+		t.Fatalf("expected session manager: %v", err)
+	}
+	router := NewRouter(RouterDependencies{
+		Config:       testConfig(),
+		AuthRequired: auth.RequireAuth(manager),
+		NotesHandler: handler,
+	})
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/notes", nil)
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, response.Code)
+	}
+}
+
 func testConfig() config.Config {
 	return config.Config{
 		Environment:         "test",
@@ -127,12 +173,23 @@ func testConfig() config.Config {
 		MongoURI:            "mongodb://localhost:27017",
 		MongoDatabase:       "notes",
 		MongoCollection:     "notes",
+		SessionSecret:       "test-session-secret",
+		OAuthAuthURL:        "https://idp.example/auth",
+		OAuthTokenURL:       "https://idp.example/token",
+		OAuthUserInfoURL:    "https://idp.example/userinfo",
 		AllowedOrigins:      []string{"http://localhost:4200"},
 		RequestTimeout:      time.Second,
 		ShutdownTimeout:     time.Second,
 		MongoConnectTimeout: time.Second,
 		ReadHeaderTimeout:   time.Second,
 		MaxRequestBodyBytes: 1 << 20,
+	}
+}
+
+func testAuthRequired() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		auth.SetUser(ctx, auth.User{ID: "oauth:test-user"})
+		ctx.Next()
 	}
 }
 

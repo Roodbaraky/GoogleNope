@@ -17,6 +17,9 @@ const (
 	defaultMongoDatabase      = "notes"
 	defaultMongoCollection    = "notes"
 	defaultAllowedOrigins     = "http://localhost:4200"
+	defaultOAuthAuthURL       = "https://accounts.google.com/o/oauth2/v2/auth"
+	defaultOAuthTokenURL      = "https://oauth2.googleapis.com/token"
+	defaultOAuthUserInfoURL   = "https://openidconnect.googleapis.com/v1/userinfo"
 	defaultRequestTimeout     = 5 * time.Second
 	defaultShutdownTimeout    = 10 * time.Second
 	defaultMongoConnectTime   = 10 * time.Second
@@ -31,6 +34,13 @@ type Config struct {
 	MongoDatabase       string
 	MongoCollection     string
 	AllowedOrigins      []string
+	SessionSecret       string
+	OAuthClientID       string
+	OAuthClientSecret   string
+	OAuthRedirectURL    string
+	OAuthAuthURL        string
+	OAuthTokenURL       string
+	OAuthUserInfoURL    string
 	RequestTimeout      time.Duration
 	ShutdownTimeout     time.Duration
 	MongoConnectTimeout time.Duration
@@ -73,6 +83,13 @@ func Load() (Config, error) {
 		MongoDatabase:       getEnv("MONGODB_DATABASE", defaultMongoDatabase),
 		MongoCollection:     getEnv("MONGODB_COLLECTION", defaultMongoCollection),
 		AllowedOrigins:      splitCSV(getEnv("CORS_ALLOWED_ORIGINS", defaultAllowedOrigins)),
+		SessionSecret:       strings.TrimSpace(os.Getenv("SESSION_SECRET")),
+		OAuthClientID:       strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID")),
+		OAuthClientSecret:   strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET")),
+		OAuthRedirectURL:    strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL")),
+		OAuthAuthURL:        getEnv("OAUTH_AUTH_URL", defaultOAuthAuthURL),
+		OAuthTokenURL:       getEnv("OAUTH_TOKEN_URL", defaultOAuthTokenURL),
+		OAuthUserInfoURL:    getEnv("OAUTH_USERINFO_URL", defaultOAuthUserInfoURL),
 		RequestTimeout:      requestTimeout,
 		ShutdownTimeout:     shutdownTimeout,
 		MongoConnectTimeout: mongoConnectTimeout,
@@ -102,6 +119,36 @@ func (cfg Config) Validate() error {
 
 	if strings.TrimSpace(cfg.MongoCollection) == "" {
 		return errors.New("MONGODB_COLLECTION is required")
+	}
+
+	if strings.TrimSpace(cfg.SessionSecret) == "" {
+		return errors.New("SESSION_SECRET is required")
+	}
+
+	if cfg.Environment == "production" {
+		if strings.TrimSpace(cfg.OAuthClientID) == "" {
+			return errors.New("OAUTH_CLIENT_ID is required in production")
+		}
+
+		if strings.TrimSpace(cfg.OAuthClientSecret) == "" {
+			return errors.New("OAUTH_CLIENT_SECRET is required in production")
+		}
+
+		if strings.TrimSpace(cfg.OAuthRedirectURL) == "" {
+			return errors.New("OAUTH_REDIRECT_URL is required in production")
+		}
+	}
+
+	if strings.TrimSpace(cfg.OAuthAuthURL) == "" {
+		return errors.New("OAUTH_AUTH_URL is required")
+	}
+
+	if strings.TrimSpace(cfg.OAuthTokenURL) == "" {
+		return errors.New("OAUTH_TOKEN_URL is required")
+	}
+
+	if strings.TrimSpace(cfg.OAuthUserInfoURL) == "" {
+		return errors.New("OAUTH_USERINFO_URL is required")
 	}
 
 	if cfg.RequestTimeout <= 0 {

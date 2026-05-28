@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"example/web-service-gin/internal/auth"
 	"example/web-service-gin/internal/config"
 	httpapi "example/web-service-gin/internal/http"
 	"example/web-service-gin/internal/notes"
@@ -61,11 +62,26 @@ func main() {
 
 	repository := mongostore.NewNotesRepository(database, cfg.MongoCollection, cfg.RequestTimeout)
 	service := notes.NewService(repository)
-	handler := notes.NewHandler(service)
+	notesHandler := notes.NewHandler(service)
+	sessionManager, err := auth.NewSessionManager(cfg.SessionSecret, cfg.Environment == "production")
+	if err != nil {
+		logger.Error("session configuration error", "error", err)
+		os.Exit(1)
+	}
+	authHandler := auth.NewHandler(auth.OAuthConfig{
+		ClientID:     cfg.OAuthClientID,
+		ClientSecret: cfg.OAuthClientSecret,
+		RedirectURL:  cfg.OAuthRedirectURL,
+		AuthURL:      cfg.OAuthAuthURL,
+		TokenURL:     cfg.OAuthTokenURL,
+		UserInfoURL:  cfg.OAuthUserInfoURL,
+	}, sessionManager)
 	router := httpapi.NewRouter(httpapi.RouterDependencies{
 		Config:       cfg,
 		Logger:       logger,
-		NotesHandler: handler,
+		AuthHandler:  authHandler,
+		AuthRequired: auth.RequireAuth(sessionManager),
+		NotesHandler: notesHandler,
 	})
 
 	server := &http.Server{

@@ -19,9 +19,24 @@ func TestLoadRequiresMongoURI(t *testing.T) {
 	}
 }
 
+func TestLoadRequiresSessionSecret(t *testing.T) {
+	clearConfigEnv(t)
+	t.Setenv("MONGODB_URI", "mongodb://localhost:27017")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected missing session secret to fail")
+	}
+
+	if !strings.Contains(err.Error(), "SESSION_SECRET") {
+		t.Fatalf("expected SESSION_SECRET error, got %q", err.Error())
+	}
+}
+
 func TestLoadUsesDefaults(t *testing.T) {
 	clearConfigEnv(t)
 	t.Setenv("MONGODB_URI", "mongodb://localhost:27017")
+	t.Setenv("SESSION_SECRET", "test-session-secret")
 
 	cfg, err := Load()
 	if err != nil {
@@ -55,6 +70,14 @@ func TestLoadUsesDefaults(t *testing.T) {
 	if cfg.MaxRequestBodyBytes != defaultMaxRequestBodySize {
 		t.Fatalf("expected default max body size %d, got %d", defaultMaxRequestBodySize, cfg.MaxRequestBodyBytes)
 	}
+
+	if cfg.SessionSecret != "test-session-secret" {
+		t.Fatalf("expected session secret to load")
+	}
+
+	if cfg.OAuthAuthURL != defaultOAuthAuthURL || cfg.OAuthTokenURL != defaultOAuthTokenURL || cfg.OAuthUserInfoURL != defaultOAuthUserInfoURL {
+		t.Fatalf("expected default OAuth provider URLs")
+	}
 }
 
 func TestLoadUsesOverrides(t *testing.T) {
@@ -64,6 +87,13 @@ func TestLoadUsesOverrides(t *testing.T) {
 	t.Setenv("MONGODB_URI", "mongodb://db.example:27017")
 	t.Setenv("MONGODB_DATABASE", "google_nope")
 	t.Setenv("MONGODB_COLLECTION", "user_notes")
+	t.Setenv("SESSION_SECRET", "test-session-secret")
+	t.Setenv("OAUTH_CLIENT_ID", "client-id")
+	t.Setenv("OAUTH_CLIENT_SECRET", "client-secret")
+	t.Setenv("OAUTH_REDIRECT_URL", "https://app.example/api/auth/callback")
+	t.Setenv("OAUTH_AUTH_URL", "https://idp.example/auth")
+	t.Setenv("OAUTH_TOKEN_URL", "https://idp.example/token")
+	t.Setenv("OAUTH_USERINFO_URL", "https://idp.example/userinfo")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:4200, https://app.example")
 	t.Setenv("REQUEST_TIMEOUT", "3s")
 	t.Setenv("SHUTDOWN_TIMEOUT", "4s")
@@ -125,11 +155,26 @@ func TestLoadUsesOverrides(t *testing.T) {
 	if cfg.MaxRequestBodyBytes != 2048 {
 		t.Fatalf("expected max body bytes override, got %d", cfg.MaxRequestBodyBytes)
 	}
+
+	if cfg.OAuthClientID != "client-id" || cfg.OAuthClientSecret != "client-secret" {
+		t.Fatalf("expected OAuth client settings to load")
+	}
+
+	if cfg.OAuthRedirectURL != "https://app.example/api/auth/callback" {
+		t.Fatalf("expected OAuth redirect URL override, got %q", cfg.OAuthRedirectURL)
+	}
+
+	if cfg.OAuthAuthURL != "https://idp.example/auth" ||
+		cfg.OAuthTokenURL != "https://idp.example/token" ||
+		cfg.OAuthUserInfoURL != "https://idp.example/userinfo" {
+		t.Fatalf("expected OAuth URL overrides")
+	}
 }
 
 func TestLoadFailsOnMalformedDuration(t *testing.T) {
 	clearConfigEnv(t)
 	t.Setenv("MONGODB_URI", "mongodb://localhost:27017")
+	t.Setenv("SESSION_SECRET", "test-session-secret")
 	t.Setenv("REQUEST_TIMEOUT", "not-a-duration")
 
 	_, err := Load()
@@ -151,6 +196,13 @@ func clearConfigEnv(t *testing.T) {
 		"MONGODB_URI",
 		"MONGODB_DATABASE",
 		"MONGODB_COLLECTION",
+		"SESSION_SECRET",
+		"OAUTH_CLIENT_ID",
+		"OAUTH_CLIENT_SECRET",
+		"OAUTH_REDIRECT_URL",
+		"OAUTH_AUTH_URL",
+		"OAUTH_TOKEN_URL",
+		"OAUTH_USERINFO_URL",
 		"CORS_ALLOWED_ORIGINS",
 		"REQUEST_TIMEOUT",
 		"SHUTDOWN_TIMEOUT",

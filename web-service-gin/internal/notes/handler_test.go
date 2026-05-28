@@ -11,7 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
+
+	"example/web-service-gin/internal/auth"
 )
+
+const testUserID = "oauth:test-user"
 
 func TestHandlerGetNotesReturnsPaginatedNotes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -21,7 +25,7 @@ func TestHandlerGetNotesReturnsPaginatedNotes(t *testing.T) {
 		listNotes: []Note{
 			{
 				ID:        noteID,
-				UserID:    developmentUserID,
+				UserID:    testUserID,
 				Title:     "Pinned",
 				Content:   "Content",
 				Pinned:    true,
@@ -46,7 +50,7 @@ func TestHandlerGetNotesReturnsPaginatedNotes(t *testing.T) {
 		t.Fatalf("expected page response: %v", err)
 	}
 
-	if repository.listUserID != developmentUserID {
+	if repository.listUserID != testUserID {
 		t.Fatalf("expected development user id, got %q", repository.listUserID)
 	}
 
@@ -86,7 +90,7 @@ func TestHandlerPostNotesCreatesNote(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, response.Code, response.Body.String())
 	}
 
-	if repository.created.UserID != developmentUserID {
+	if repository.created.UserID != testUserID {
 		t.Fatalf("expected created note to be user scoped, got %q", repository.created.UserID)
 	}
 
@@ -124,7 +128,7 @@ func TestHandlerGetNoteByIDReturnsNote(t *testing.T) {
 	repository := &handlerFakeRepository{
 		findNote: Note{
 			ID:      noteID,
-			UserID:  developmentUserID,
+			UserID:  testUserID,
 			Title:   "Found",
 			Content: "Body",
 		},
@@ -139,7 +143,7 @@ func TestHandlerGetNoteByIDReturnsNote(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, response.Code, response.Body.String())
 	}
 
-	if repository.findUserID != developmentUserID || repository.findID != noteID {
+	if repository.findUserID != testUserID || repository.findID != noteID {
 		t.Fatalf("unexpected find scope: user=%q id=%s", repository.findUserID, repository.findID.Hex())
 	}
 
@@ -190,7 +194,7 @@ func TestHandlerPatchNoteUpdatesNote(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, response.Code, response.Body.String())
 	}
 
-	if repository.updateUserID != developmentUserID || repository.updateID != noteID {
+	if repository.updateUserID != testUserID || repository.updateID != noteID {
 		t.Fatalf("unexpected update scope: user=%q id=%s", repository.updateUserID, repository.updateID.Hex())
 	}
 
@@ -241,7 +245,7 @@ func TestHandlerDeleteNoteDeletesNote(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusNoContent, response.Code, response.Body.String())
 	}
 
-	if repository.deleteUserID != developmentUserID || repository.deleteID != noteID {
+	if repository.deleteUserID != testUserID || repository.deleteID != noteID {
 		t.Fatalf("unexpected delete scope: user=%q id=%s", repository.deleteUserID, repository.deleteID.Hex())
 	}
 }
@@ -273,6 +277,10 @@ func newTestNotesRouter(repository Repository) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
+	router.Use(func(ctx *gin.Context) {
+		auth.SetUser(ctx, auth.User{ID: testUserID, Email: "test@example.com"})
+		ctx.Next()
+	})
 	handler := NewHandler(NewService(repository))
 	handler.RegisterRoutes(router.Group("/api/notes"))
 	return router
