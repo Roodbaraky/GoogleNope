@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ func TestServiceListClampsLimit(t *testing.T) {
 	repository := &serviceFakeRepository{}
 	service := NewService(repository)
 
-	page, err := service.List(context.Background(), 2, MaxLimit+50)
+	page, err := service.List(context.Background(), "user-1", 2, MaxLimit+50)
 	if err != nil {
 		t.Fatalf("expected list to succeed: %v", err)
 	}
@@ -29,18 +30,58 @@ func TestServiceListClampsLimit(t *testing.T) {
 	if page.Limit != MaxLimit {
 		t.Fatalf("expected response limit to be %d, got %d", MaxLimit, page.Limit)
 	}
+
+	if repository.userID != "user-1" {
+		t.Fatalf("expected user scoped list, got %q", repository.userID)
+	}
+
+	if page.Total != 25 || page.Pages != 1 {
+		t.Fatalf("expected total and pages metadata, got total=%d pages=%d", page.Total, page.Pages)
+	}
 }
 
-func TestServiceCreateManyRejectsEmptyInput(t *testing.T) {
+func TestServiceListCalculatesPageCount(t *testing.T) {
+	repository := &serviceFakeRepository{listTotal: 25}
+	service := NewService(repository)
+
+	page, err := service.List(context.Background(), "user-1", 1, 10)
+	if err != nil {
+		t.Fatalf("expected list to succeed: %v", err)
+	}
+
+	if page.Pages != 3 {
+		t.Fatalf("expected 3 pages, got %d", page.Pages)
+	}
+}
+
+func TestServiceCreateRejectsEmptyInput(t *testing.T) {
 	service := NewService(&serviceFakeRepository{})
 
-	_, err := service.CreateMany(context.Background(), nil)
+	_, err := service.Create(context.Background(), "user-1", CreateNoteInput{})
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected ErrInvalidInput, got %v", err)
 	}
 }
 
-func TestServiceCreateManySanitizesAndTimestampsNotes(t *testing.T) {
+func TestServiceCreateRejectsOverLengthInput(t *testing.T) {
+	service := NewService(&serviceFakeRepository{})
+
+	_, err := service.Create(context.Background(), "user-1", CreateNoteInput{
+		Title: strings.Repeat("a", MaxTitleLength+1),
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput for long title, got %v", err)
+	}
+
+	_, err = service.Create(context.Background(), "user-1", CreateNoteInput{
+		Content: strings.Repeat("a", MaxContentLength+1),
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput for long content, got %v", err)
+	}
+}
+
+func TestServiceCreateSanitizesAndTimestampsNote(t *testing.T) {
 	repository := &serviceFakeRepository{}
 	service := NewService(repository)
 	fixedNow := time.Date(2026, 5, 27, 12, 0, 0, 0, time.FixedZone("BST", 3600))
@@ -48,31 +89,34 @@ func TestServiceCreateManySanitizesAndTimestampsNotes(t *testing.T) {
 		return fixedNow
 	}
 
-	clientProvidedID := bson.NewObjectID()
-	createdAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
-	_, err := service.CreateMany(context.Background(), []Note{
-		{
-			ID:        clientProvidedID,
-			Title:     "Title",
-			Content:   "Content",
-			CreatedAt: createdAt,
-		},
+	_, err := service.Create(context.Background(), "user-1", CreateNoteInput{
+		Title:   "  Title  ",
+		Content: "  Content  ",
+		Pinned:  true,
 	})
 	if err != nil {
 		t.Fatalf("expected create to succeed: %v", err)
 	}
 
-	if len(repository.created) != 1 {
-		t.Fatalf("expected one created note, got %d", len(repository.created))
+	created := repository.created
+	if created.UserID != "user-1" {
+		t.Fatalf("expected user id to be assigned, got %q", created.UserID)
 	}
 
-	created := repository.created[0]
-	if created.ID != (bson.ObjectID{}) {
-		t.Fatalf("expected service to strip client-provided ID, got %s", created.ID.Hex())
+	if created.Title != "Title" {
+		t.Fatalf("expected title to be trimmed, got %q", created.Title)
 	}
 
-	if !created.CreatedAt.Equal(createdAt) {
-		t.Fatalf("expected service to preserve CreatedAt, got %s", created.CreatedAt)
+	if created.Content != "Content" {
+		t.Fatalf("expected content to be trimmed, got %q", created.Content)
+	}
+
+	if !created.Pinned {
+		t.Fatal("expected pinned flag to be preserved")
+	}
+
+	if !created.CreatedAt.Equal(fixedNow.UTC()) {
+		t.Fatalf("expected CreatedAt to be %s, got %s", fixedNow.UTC(), created.CreatedAt)
 	}
 
 	if !created.UpdatedAt.Equal(fixedNow.UTC()) {
@@ -84,7 +128,7 @@ func TestServiceFindByIDRejectsInvalidID(t *testing.T) {
 	repository := &serviceFakeRepository{}
 	service := NewService(repository)
 
-	_, err := service.FindByID(context.Background(), "not-an-object-id")
+	_, err := service.FindByID(context.Background(), "user-1", "not-an-object-id")
 	if !errors.Is(err, ErrInvalidID) {
 		t.Fatalf("expected ErrInvalidID, got %v", err)
 	}
@@ -94,23 +138,112 @@ func TestServiceFindByIDRejectsInvalidID(t *testing.T) {
 	}
 }
 
+func TestServiceUpdateRejectsEmptyPatch(t *testing.T) {
+	service := NewService(&serviceFakeRepository{})
+
+	_, err := service.Update(context.Background(), "user-1", bson.NewObjectID().Hex(), UpdateNoteInput{})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestServiceUpdateRejectsOverLengthInput(t *testing.T) {
+	service := NewService(&serviceFakeRepository{})
+	id := bson.NewObjectID().Hex()
+
+	title := strings.Repeat("a", MaxTitleLength+1)
+	_, err := service.Update(context.Background(), "user-1", id, UpdateNoteInput{Title: &title})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput for long title, got %v", err)
+	}
+
+	content := strings.Repeat("a", MaxContentLength+1)
+	_, err = service.Update(context.Background(), "user-1", id, UpdateNoteInput{Content: &content})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput for long content, got %v", err)
+	}
+}
+
+func TestServiceUpdateRejectsClearingTitleAndContentTogether(t *testing.T) {
+	service := NewService(&serviceFakeRepository{})
+	emptyTitle := " "
+	emptyContent := " "
+
+	_, err := service.Update(context.Background(), "user-1", bson.NewObjectID().Hex(), UpdateNoteInput{
+		Title:   &emptyTitle,
+		Content: &emptyContent,
+	})
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput, got %v", err)
+	}
+}
+
+func TestServiceUpdateTrimsTextAndTimestamps(t *testing.T) {
+	repository := &serviceFakeRepository{}
+	service := NewService(repository)
+	fixedNow := time.Date(2026, 5, 27, 12, 0, 0, 0, time.UTC)
+	service.now = func() time.Time {
+		return fixedNow
+	}
+
+	title := "  Updated  "
+	pinned := true
+	_, err := service.Update(context.Background(), "user-1", bson.NewObjectID().Hex(), UpdateNoteInput{
+		Title:  &title,
+		Pinned: &pinned,
+	})
+	if err != nil {
+		t.Fatalf("expected update to succeed: %v", err)
+	}
+
+	if repository.updated.Title == nil || *repository.updated.Title != "Updated" {
+		t.Fatalf("expected trimmed title, got %#v", repository.updated.Title)
+	}
+
+	if repository.updated.Pinned == nil || !*repository.updated.Pinned {
+		t.Fatal("expected pinned update")
+	}
+
+	if !repository.updated.UpdatedAt.Equal(fixedNow) {
+		t.Fatalf("expected UpdatedAt to be %s, got %s", fixedNow, repository.updated.UpdatedAt)
+	}
+}
+
 type serviceFakeRepository struct {
 	pagination Pagination
-	created    []Note
+	userID     string
+	created    Note
+	updated    NoteUpdate
 	findCalled bool
+	listTotal  int64
 }
 
-func (repository *serviceFakeRepository) List(_ context.Context, pagination Pagination) ([]Note, int64, error) {
+func (repository *serviceFakeRepository) List(_ context.Context, userID string, pagination Pagination) ([]Note, int64, error) {
+	repository.userID = userID
 	repository.pagination = pagination
-	return []Note{}, 0, nil
+	total := repository.listTotal
+	if total == 0 {
+		total = 25
+	}
+
+	return []Note{}, total, nil
 }
 
-func (repository *serviceFakeRepository) CreateMany(_ context.Context, newNotes []Note) ([]Note, error) {
-	repository.created = append(repository.created, newNotes...)
-	return newNotes, nil
+func (repository *serviceFakeRepository) Create(_ context.Context, newNote Note) (Note, error) {
+	repository.created = newNote
+	return newNote, nil
 }
 
-func (repository *serviceFakeRepository) FindByID(_ context.Context, _ bson.ObjectID) (Note, error) {
+func (repository *serviceFakeRepository) FindByID(_ context.Context, _ string, _ bson.ObjectID) (Note, error) {
 	repository.findCalled = true
 	return Note{}, ErrNotFound
+}
+
+func (repository *serviceFakeRepository) Update(_ context.Context, _ string, _ bson.ObjectID, update NoteUpdate) (Note, error) {
+	repository.updated = update
+	return Note{}, nil
+}
+
+func (repository *serviceFakeRepository) Delete(_ context.Context, _ string, _ bson.ObjectID) error {
+	return nil
 }

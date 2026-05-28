@@ -106,7 +106,7 @@ func TestNewRouterAppliesMaxBodyBytes(t *testing.T) {
 		NotesHandler: handler,
 	})
 	response := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/notes", bytes.NewBufferString(`[{"title":"too large"}]`))
+	request := httptest.NewRequest(http.MethodPost, "/api/notes", bytes.NewBufferString(`{"title":"too large"}`))
 	request.Header.Set("Content-Type", "application/json")
 
 	router.ServeHTTP(response, request)
@@ -115,7 +115,7 @@ func TestNewRouterAppliesMaxBodyBytes(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, response.Code)
 	}
 
-	if len(repository.created) != 0 {
+	if repository.created {
 		t.Fatal("expected request body limit to prevent note creation")
 	}
 }
@@ -137,18 +137,26 @@ func testConfig() config.Config {
 }
 
 type fakeRepository struct {
-	created []notes.Note
+	created bool
 }
 
-func (repository *fakeRepository) List(context.Context, notes.Pagination) ([]notes.Note, int64, error) {
+func (repository *fakeRepository) List(context.Context, string, notes.Pagination) ([]notes.Note, int64, error) {
 	return []notes.Note{}, 0, nil
 }
 
-func (repository *fakeRepository) CreateMany(_ context.Context, newNotes []notes.Note) ([]notes.Note, error) {
-	repository.created = append(repository.created, newNotes...)
-	return newNotes, nil
+func (repository *fakeRepository) Create(_ context.Context, newNote notes.Note) (notes.Note, error) {
+	repository.created = true
+	return newNote, nil
 }
 
-func (repository *fakeRepository) FindByID(context.Context, bson.ObjectID) (notes.Note, error) {
+func (repository *fakeRepository) FindByID(context.Context, string, bson.ObjectID) (notes.Note, error) {
 	return notes.Note{}, notes.ErrNotFound
+}
+
+func (repository *fakeRepository) Update(context.Context, string, bson.ObjectID, notes.NoteUpdate) (notes.Note, error) {
+	return notes.Note{}, notes.ErrNotFound
+}
+
+func (repository *fakeRepository) Delete(context.Context, string, bson.ObjectID) error {
+	return notes.ErrNotFound
 }

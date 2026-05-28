@@ -12,6 +12,8 @@ type Handler struct {
 	service *Service
 }
 
+const developmentUserID = "local-user"
+
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
@@ -20,6 +22,8 @@ func (handler *Handler) RegisterRoutes(router gin.IRoutes) {
 	router.GET("", handler.getNotes)
 	router.POST("", handler.postNotes)
 	router.GET("/:id", handler.getNoteByID)
+	router.PATCH("/:id", handler.patchNote)
+	router.DELETE("/:id", handler.deleteNote)
 }
 
 func (handler *Handler) getNotes(ctx *gin.Context) {
@@ -29,7 +33,7 @@ func (handler *Handler) getNotes(ctx *gin.Context) {
 		return
 	}
 
-	pageInfo, err := handler.service.List(ctx.Request.Context(), page, limit)
+	pageInfo, err := handler.service.List(ctx.Request.Context(), currentUserID(ctx), page, limit)
 	if err != nil {
 		internalServerError(ctx)
 		return
@@ -39,16 +43,16 @@ func (handler *Handler) getNotes(ctx *gin.Context) {
 }
 
 func (handler *Handler) postNotes(ctx *gin.Context) {
-	var newNotes []Note
-	if err := ctx.ShouldBindJSON(&newNotes); err != nil {
+	var input CreateNoteInput
+	if err := ctx.ShouldBindJSON(&input); err != nil {
 		abortWithError(ctx, http.StatusBadRequest, "Invalid JSON request body")
 		return
 	}
 
-	storedNotes, err := handler.service.CreateMany(ctx.Request.Context(), newNotes)
+	storedNote, err := handler.service.Create(ctx.Request.Context(), currentUserID(ctx), input)
 	if err != nil {
 		if errors.Is(err, ErrInvalidInput) {
-			abortWithError(ctx, http.StatusBadRequest, err.Error())
+			abortWithError(ctx, http.StatusBadRequest, "Invalid note")
 			return
 		}
 
@@ -56,11 +60,11 @@ func (handler *Handler) postNotes(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, storedNotes)
+	ctx.JSON(http.StatusCreated, storedNote)
 }
 
 func (handler *Handler) getNoteByID(ctx *gin.Context) {
-	note, err := handler.service.FindByID(ctx.Request.Context(), ctx.Param("id"))
+	note, err := handler.service.FindByID(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"))
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidID):
@@ -75,6 +79,50 @@ func (handler *Handler) getNoteByID(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, note)
+}
+
+func (handler *Handler) patchNote(ctx *gin.Context) {
+	var input UpdateNoteInput
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		abortWithError(ctx, http.StatusBadRequest, "Invalid JSON request body")
+		return
+	}
+
+	note, err := handler.service.Update(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"), input)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidID):
+			abortWithError(ctx, http.StatusBadRequest, "Invalid ID format")
+		case errors.Is(err, ErrInvalidInput):
+			abortWithError(ctx, http.StatusBadRequest, "Invalid note")
+		case errors.Is(err, ErrNotFound):
+			abortWithError(ctx, http.StatusNotFound, "Note not found")
+		default:
+			internalServerError(ctx)
+		}
+
+		return
+	}
+
+	ctx.JSON(http.StatusOK, note)
+}
+
+func (handler *Handler) deleteNote(ctx *gin.Context) {
+	err := handler.service.Delete(ctx.Request.Context(), currentUserID(ctx), ctx.Param("id"))
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidID):
+			abortWithError(ctx, http.StatusBadRequest, "Invalid ID format")
+		case errors.Is(err, ErrNotFound):
+			abortWithError(ctx, http.StatusNotFound, "Note not found")
+		default:
+			internalServerError(ctx)
+		}
+
+		return
+	}
+
+	ctx.Status(http.StatusNoContent)
 }
 
 func parsePagination(ctx *gin.Context) (int, int, bool) {
@@ -104,4 +152,8 @@ func abortWithError(ctx *gin.Context, status int, message string) {
 
 func internalServerError(ctx *gin.Context) {
 	abortWithError(ctx, http.StatusInternalServerError, "Internal server error")
+}
+
+func currentUserID(_ *gin.Context) string {
+	return developmentUserID
 }

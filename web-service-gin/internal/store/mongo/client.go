@@ -30,6 +30,7 @@ func EnsureNoteIndexes(ctx context.Context, database *mongo.Database, collection
 		{
 			Keys: bson.D{
 				{Key: "userId", Value: 1},
+				{Key: "pinned", Value: -1},
 				{Key: "updatedAt", Value: -1},
 				{Key: "_id", Value: -1},
 			},

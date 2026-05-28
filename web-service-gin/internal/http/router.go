@@ -44,7 +44,7 @@ func NewRouter(deps RouterDependencies) *gin.Engine {
 	})
 
 	if deps.NotesHandler != nil {
-		deps.NotesHandler.RegisterRoutes(router.Group("/notes"))
+		deps.NotesHandler.RegisterRoutes(router.Group("/api/notes"))
 	}
 
 	return router
