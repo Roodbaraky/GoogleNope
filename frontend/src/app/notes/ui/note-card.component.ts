@@ -11,7 +11,7 @@ import { Note } from '../data-access/note.models';
       <div class="note-header">
         <h2>{{ note.title || 'Untitled' }}</h2>
         @if (note.pinned) {
-          <span class="pin" title="Pinned" aria-label="Pinned">★</span>
+          <span class="pin" title="Pinned" aria-label="Pinned">Pinned</span>
         }
       </div>
       <p>{{ note.content || 'No content' }}</p>
@@ -22,27 +22,28 @@ import { Note } from '../data-access/note.models';
   `,
   styles: `
     .note-card {
-      background: #ffffff;
-      border: 1px solid #dadce0;
-      border-radius: 8px;
+      background: var(--notion-canvas);
+      border: 1px solid var(--notion-hairline);
+      border-radius: 12px;
       cursor: pointer;
       display: grid;
       gap: 12px;
       min-height: 148px;
-      padding: 14px;
-      transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+      padding: 16px;
+      transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, background 120ms ease;
     }
 
     .note-card:hover,
     .note-card:focus {
-      border-color: #9aa0a6;
-      box-shadow: 0 2px 8px rgb(60 64 67 / 16%);
+      border-color: var(--notion-hairline-strong);
+      box-shadow: var(--notion-shadow-card);
       outline: 0;
       transform: translateY(-1px);
     }
 
     .note-card.pinned {
-      border-color: #fbbc04;
+      background: var(--notion-tint-yellow);
+      border-color: #f5d75e;
     }
 
     .note-header {
@@ -53,21 +54,27 @@ import { Note } from '../data-access/note.models';
     }
 
     h2 {
-      color: #202124;
+      color: var(--notion-ink);
       font-size: 1rem;
+      font-weight: 600;
       line-height: 1.35;
       margin: 0;
       overflow-wrap: anywhere;
     }
 
     .pin {
-      color: #f9ab00;
+      background: var(--notion-tint-lavender);
+      border-radius: 6px;
+      color: #391c57;
       flex: 0 0 auto;
-      font-size: 0.9rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 2px 8px;
     }
 
     p {
-      color: #3c4043;
+      color: var(--notion-charcoal);
       display: -webkit-box;
       line-height: 1.45;
       margin: 0;
@@ -80,7 +87,7 @@ import { Note } from '../data-access/note.models';
 
     time {
       align-self: end;
-      color: #80868b;
+      color: var(--notion-steel);
       font-size: 0.78rem;
     }
   `,

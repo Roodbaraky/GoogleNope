@@ -1,13 +1,15 @@
 :host {
-  color: #202124;
+  color: var(--notion-charcoal);
   display: block;
   min-height: 100vh;
 }
 
 .shell {
-  background: #f8fafd;
+  background:
+    linear-gradient(180deg, var(--notion-surface) 0, var(--notion-surface-soft) 280px),
+    var(--notion-surface-soft);
   min-height: 100vh;
-  padding: 20px clamp(16px, 4vw, 48px) 48px;
+  padding: 24px clamp(16px, 4vw, 48px) 56px;
 }
 
 .topbar {
@@ -15,59 +17,73 @@
   display: flex;
   gap: 16px;
   justify-content: space-between;
-  margin: 0 auto 28px;
+  margin: 0 auto 32px;
   max-width: 1180px;
 }
 
 h1 {
-  font-size: clamp(1.4rem, 2.5vw, 2rem);
-  line-height: 1.1;
+  color: var(--notion-ink);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.15;
   margin: 0;
 }
 
 .topbar p {
-  color: #5f6368;
-  margin: 4px 0 0;
+  color: var(--notion-slate);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 6px 0 0;
 }
 
 .session-actions {
   align-items: center;
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .session-actions img {
+  border: 1px solid var(--notion-hairline);
   border-radius: 50%;
   height: 36px;
   width: 36px;
 }
 
 button {
-  background: #1a73e8;
+  background: var(--notion-primary);
   border: 0;
-  border-radius: 6px;
-  color: #ffffff;
+  border-radius: 8px;
+  color: var(--notion-canvas);
   cursor: pointer;
-  font: inherit;
-  font-weight: 600;
-  min-height: 38px;
-  padding: 0 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 40px;
+  padding: 0 18px;
+}
+
+button:hover {
+  background: var(--notion-primary-pressed);
 }
 
 button.secondary {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  color: #202124;
+  background: var(--notion-canvas);
+  border: 1px solid var(--notion-hairline-strong);
+  color: var(--notion-ink);
+}
+
+button.secondary:hover {
+  background: var(--notion-surface);
 }
 
 .state,
 .login-panel {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
+  background: var(--notion-canvas);
+  border: 1px solid var(--notion-hairline);
+  border-radius: 12px;
+  box-shadow: var(--notion-shadow-subtle);
   margin: 0 auto;
   max-width: 680px;
-  padding: 22px;
+  padding: 24px;
   text-align: center;
 }
 
@@ -79,37 +95,41 @@ button.secondary {
 
 .login-panel h2,
 .empty h2 {
-  font-size: 1.15rem;
+  color: var(--notion-ink);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
   margin: 0;
 }
 
 .login-panel p,
 .empty p {
-  color: #5f6368;
+  color: var(--notion-slate);
   margin: 0;
 }
 
 .error {
-  color: #b3261e;
+  color: var(--notion-error);
 }
 
 .note-section {
-  margin: 0 auto 28px;
+  margin: 0 auto 32px;
   max-width: 1180px;
 }
 
 .note-section > h2 {
-  color: #5f6368;
-  font-size: 0.82rem;
+  color: var(--notion-steel);
+  font-size: 0.78rem;
+  font-weight: 600;
   letter-spacing: 0;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   text-transform: uppercase;
 }
 
 .note-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
 }
 
 @media (max-width: 560px) {

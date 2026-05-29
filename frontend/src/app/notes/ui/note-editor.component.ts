@@ -15,6 +15,7 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
           <div class="editor-actions">
             <label>
               <input name="edit-pinned" type="checkbox" [(ngModel)]="pinned" />
+              <span class="toggle-track" aria-hidden="true"></span>
               <span>Pinned</span>
             </label>
             <div class="buttons">
@@ -29,7 +30,7 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
   styles: `
     .backdrop {
       align-items: center;
-      background: rgb(32 33 36 / 36%);
+      background: rgb(15 15 15 / 36%);
       display: flex;
       inset: 0;
       justify-content: center;
@@ -39,32 +40,40 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
     }
 
     .editor {
-      background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 10px 32px rgb(32 33 36 / 32%);
+      background: var(--notion-canvas);
+      border: 1px solid var(--notion-hairline);
+      border-radius: 12px;
+      box-shadow: var(--notion-shadow-modal);
       display: grid;
-      gap: 12px;
+      gap: 14px;
       max-height: min(760px, calc(100vh - 40px));
       max-width: 720px;
-      padding: 18px;
+      padding: 20px;
       width: min(100%, 720px);
     }
 
     input,
     textarea {
       border: 0;
-      color: #202124;
-      font: inherit;
+      color: var(--notion-ink);
       outline: 0;
       width: 100%;
     }
 
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--notion-stone);
+    }
+
     input {
-      font-size: 1.2rem;
+      font-size: 1.35rem;
       font-weight: 600;
+      line-height: 1.3;
     }
 
     textarea {
+      color: var(--notion-charcoal);
+      line-height: 1.55;
       min-height: 320px;
       resize: vertical;
       white-space: pre-wrap;
@@ -83,28 +92,86 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
     }
 
     label {
-      color: #5f6368;
-      font-size: 0.9rem;
+      color: var(--notion-slate);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    label input {
+      inline-size: 1px;
+      opacity: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      background: var(--notion-surface);
+      border: 1px solid var(--notion-hairline-strong);
+      border-radius: 9999px;
+      height: 22px;
+      position: relative;
+      transition: background 120ms ease, border-color 120ms ease;
+      width: 38px;
+    }
+
+    .toggle-track::after {
+      background: var(--notion-canvas);
+      border: 1px solid var(--notion-hairline);
+      border-radius: 50%;
+      box-shadow: var(--notion-shadow-subtle);
+      content: '';
+      height: 16px;
+      left: 2px;
+      position: absolute;
+      top: 2px;
+      transition: transform 120ms ease;
+      width: 16px;
+    }
+
+    label input:checked + .toggle-track {
+      background: var(--notion-primary);
+      border-color: var(--notion-primary);
+    }
+
+    label input:checked + .toggle-track::after {
+      transform: translateX(16px);
+    }
+
+    label input:focus-visible + .toggle-track {
+      outline: 2px solid var(--notion-primary);
+      outline-offset: 2px;
     }
 
     button {
       background: transparent;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      color: #202124;
+      border: 1px solid var(--notion-hairline-strong);
+      border-radius: 8px;
+      color: var(--notion-ink);
       cursor: pointer;
-      font: inherit;
-      min-height: 36px;
-      padding: 0 14px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      min-height: 40px;
+      padding: 0 16px;
     }
 
     button:hover {
-      background: #f1f3f4;
+      background: var(--notion-surface);
     }
 
     .danger {
-      border-color: #f4c7c3;
-      color: #b3261e;
+      border-color: #f4b8b8;
+      color: var(--notion-error);
+    }
+
+    @media (max-width: 560px) {
+      .editor-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .buttons {
+        justify-content: flex-end;
+      }
     }
   `,
 })

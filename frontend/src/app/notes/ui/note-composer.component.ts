@@ -8,6 +8,11 @@ import { CreateNoteRequest } from '../data-access/note.models';
   imports: [FormsModule],
   template: `
     <form class="composer" (ngSubmit)="submit()">
+      <div class="composer-chrome">
+        <span class="dot peach"></span>
+        <span class="dot mint"></span>
+        <span class="dot lavender"></span>
+      </div>
       <input
         name="title"
         type="text"
@@ -27,41 +32,76 @@ import { CreateNoteRequest } from '../data-access/note.models';
       <div class="composer-actions">
         <label class="pin-toggle">
           <input name="pinned" type="checkbox" [(ngModel)]="pinned" [disabled]="saving()" />
-          <span>Pinned</span>
+          <span class="toggle-track" aria-hidden="true"></span>
+          <span>Pin note</span>
         </label>
-        <button type="submit" [disabled]="saving() || !canSubmit()">Add note</button>
+        <button type="submit" [disabled]="saving() || !canSubmit()">
+          {{ saving() ? 'Saving' : 'Add note' }}
+        </button>
       </div>
     </form>
   `,
   styles: `
     .composer {
-      background: #ffffff;
-      border: 1px solid #dadce0;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgb(60 64 67 / 18%);
+      background: var(--notion-canvas);
+      border: 1px solid var(--notion-hairline);
+      border-radius: 12px;
+      box-shadow: var(--notion-shadow-card);
       display: grid;
-      gap: 8px;
-      margin: 0 auto 24px;
+      gap: 10px;
+      margin: 0 auto 32px;
       max-width: 680px;
-      padding: 14px;
+      padding: 16px;
+    }
+
+    .composer-chrome {
+      display: flex;
+      gap: 6px;
+      padding-bottom: 2px;
+    }
+
+    .dot {
+      border-radius: 9999px;
+      height: 8px;
+      width: 8px;
+    }
+
+    .peach {
+      background: var(--notion-tint-peach);
+    }
+
+    .mint {
+      background: var(--notion-tint-mint);
+    }
+
+    .lavender {
+      background: var(--notion-tint-lavender);
     }
 
     input,
     textarea {
       border: 0;
-      color: #202124;
-      font: inherit;
+      color: var(--notion-ink);
       outline: 0;
       resize: vertical;
       width: 100%;
     }
 
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--notion-stone);
+    }
+
     input {
+      font-size: 1.125rem;
       font-weight: 600;
+      line-height: 1.35;
     }
 
     textarea {
-      min-height: 68px;
+      color: var(--notion-charcoal);
+      line-height: 1.55;
+      min-height: 84px;
     }
 
     .composer-actions {
@@ -73,27 +113,89 @@ import { CreateNoteRequest } from '../data-access/note.models';
 
     .pin-toggle {
       align-items: center;
-      color: #5f6368;
+      color: var(--notion-slate);
+      cursor: pointer;
       display: inline-flex;
-      font-size: 0.9rem;
-      gap: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      gap: 10px;
+    }
+
+    .pin-toggle input {
+      inline-size: 1px;
+      opacity: 0;
+      position: absolute;
+    }
+
+    .toggle-track {
+      background: var(--notion-surface);
+      border: 1px solid var(--notion-hairline-strong);
+      border-radius: 9999px;
+      height: 22px;
+      position: relative;
+      transition: background 120ms ease, border-color 120ms ease;
+      width: 38px;
+    }
+
+    .toggle-track::after {
+      background: var(--notion-canvas);
+      border: 1px solid var(--notion-hairline);
+      border-radius: 50%;
+      box-shadow: var(--notion-shadow-subtle);
+      content: '';
+      height: 16px;
+      left: 2px;
+      position: absolute;
+      top: 2px;
+      transition: transform 120ms ease;
+      width: 16px;
+    }
+
+    .pin-toggle input:checked + .toggle-track {
+      background: var(--notion-primary);
+      border-color: var(--notion-primary);
+    }
+
+    .pin-toggle input:checked + .toggle-track::after {
+      transform: translateX(16px);
+    }
+
+    .pin-toggle input:focus-visible + .toggle-track {
+      outline: 2px solid var(--notion-primary);
+      outline-offset: 2px;
     }
 
     button {
-      background: #1a73e8;
+      background: var(--notion-primary);
       border: 0;
-      border-radius: 6px;
-      color: #ffffff;
+      border-radius: 8px;
+      color: var(--notion-canvas);
       cursor: pointer;
-      font: inherit;
-      font-weight: 600;
-      min-height: 36px;
-      padding: 0 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      min-height: 40px;
+      padding: 0 18px;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--notion-primary-pressed);
     }
 
     button:disabled {
-      background: #d2e3fc;
+      background: var(--notion-hairline);
+      color: var(--notion-muted);
       cursor: not-allowed;
+    }
+
+    @media (max-width: 520px) {
+      .composer-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
     }
   `,
 })
