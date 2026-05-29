@@ -40,6 +40,61 @@ func TestHandlerLoginRedirectsToOAuthProvider(t *testing.T) {
 	}
 }
 
+func TestHandlerLoginAllowsDevelopmentSessionWhenOAuthIsMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	manager := newTestSessionManager(t)
+	router := gin.New()
+	NewHandler(OAuthConfig{
+		SuccessRedirectURL: "http://localhost:4200",
+		AllowDevLogin:      true,
+	}, manager).RegisterRoutes(router.Group("/api/auth"))
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusFound {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusFound, response.Code, response.Body.String())
+	}
+
+	if response.Header().Get("Location") != "http://localhost:4200" {
+		t.Fatalf("unexpected redirect: %q", response.Header().Get("Location"))
+	}
+
+	var sessionCookie *http.Cookie
+	for _, cookie := range response.Result().Cookies() {
+		if cookie.Name == sessionCookieName {
+			sessionCookie = cookie
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatal("expected session cookie")
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	request.AddCookie(sessionCookie)
+	response = httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected dev session to authenticate, got %d: %s", response.Code, response.Body.String())
+	}
+}
+
+func TestHandlerLoginRejectsMissingOAuthOutsideDevLogin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	NewHandler(OAuthConfig{}, newTestSessionManager(t)).RegisterRoutes(router.Group("/api/auth"))
+
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d", http.StatusServiceUnavailable, response.Code)
+	}
+}
+
 func TestHandlerMeReturnsCurrentSession(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	manager := newTestSessionManager(t)
@@ -106,11 +161,12 @@ func newAuthTestRouter(t *testing.T) *gin.Engine {
 
 func testOAuthConfig() OAuthConfig {
 	return OAuthConfig{
-		ClientID:     "client-id",
-		ClientSecret: "client-secret",
-		RedirectURL:  "https://app.example/api/auth/callback",
-		AuthURL:      "https://idp.example/auth",
-		TokenURL:     "https://idp.example/token",
-		UserInfoURL:  "https://idp.example/userinfo",
+		ClientID:           "client-id",
+		ClientSecret:       "client-secret",
+		RedirectURL:        "https://app.example/api/auth/callback",
+		AuthURL:            "https://idp.example/auth",
+		TokenURL:           "https://idp.example/token",
+		UserInfoURL:        "https://idp.example/userinfo",
+		SuccessRedirectURL: "https://app.example",
 	}
 }

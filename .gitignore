@@ -8,6 +8,7 @@ bin/
 *.exe
 *.test
 coverage.out
+*.log
 
 # Node / Angular
 node_modules/

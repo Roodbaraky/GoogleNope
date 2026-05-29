@@ -69,12 +69,14 @@ func main() {
 		os.Exit(1)
 	}
 	authHandler := auth.NewHandler(auth.OAuthConfig{
-		ClientID:     cfg.OAuthClientID,
-		ClientSecret: cfg.OAuthClientSecret,
-		RedirectURL:  cfg.OAuthRedirectURL,
-		AuthURL:      cfg.OAuthAuthURL,
-		TokenURL:     cfg.OAuthTokenURL,
-		UserInfoURL:  cfg.OAuthUserInfoURL,
+		ClientID:           cfg.OAuthClientID,
+		ClientSecret:       cfg.OAuthClientSecret,
+		RedirectURL:        cfg.OAuthRedirectURL,
+		AuthURL:            cfg.OAuthAuthURL,
+		TokenURL:           cfg.OAuthTokenURL,
+		UserInfoURL:        cfg.OAuthUserInfoURL,
+		SuccessRedirectURL: cfg.FrontendURL,
+		AllowDevLogin:      cfg.Environment != "production",
 	}, sessionManager)
 	router := httpapi.NewRouter(httpapi.RouterDependencies{
 		Config:       cfg,

@@ -51,6 +51,10 @@ func TestLoadUsesDefaults(t *testing.T) {
 		t.Fatalf("expected default HTTP addr %q, got %q", defaultHTTPAddr, cfg.HTTPAddr)
 	}
 
+	if cfg.FrontendURL != defaultFrontendURL {
+		t.Fatalf("expected default frontend URL %q, got %q", defaultFrontendURL, cfg.FrontendURL)
+	}
+
 	if cfg.MongoDatabase != defaultMongoDatabase {
 		t.Fatalf("expected default Mongo database %q, got %q", defaultMongoDatabase, cfg.MongoDatabase)
 	}
@@ -84,6 +88,7 @@ func TestLoadUsesOverrides(t *testing.T) {
 	clearConfigEnv(t)
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("HTTP_ADDR", ":9090")
+	t.Setenv("FRONTEND_URL", "https://app.example")
 	t.Setenv("MONGODB_URI", "mongodb://db.example:27017")
 	t.Setenv("MONGODB_DATABASE", "google_nope")
 	t.Setenv("MONGODB_COLLECTION", "user_notes")
@@ -112,6 +117,10 @@ func TestLoadUsesOverrides(t *testing.T) {
 
 	if cfg.HTTPAddr != ":9090" {
 		t.Fatalf("expected HTTP addr override, got %q", cfg.HTTPAddr)
+	}
+
+	if cfg.FrontendURL != "https://app.example" {
+		t.Fatalf("expected frontend URL override, got %q", cfg.FrontendURL)
 	}
 
 	if cfg.MongoURI != "mongodb://db.example:27017" {
@@ -193,6 +202,7 @@ func clearConfigEnv(t *testing.T) {
 	for _, key := range []string{
 		"APP_ENV",
 		"HTTP_ADDR",
+		"FRONTEND_URL",
 		"MONGODB_URI",
 		"MONGODB_DATABASE",
 		"MONGODB_COLLECTION",

@@ -34,7 +34,7 @@ func EnsureNoteIndexes(ctx context.Context, database *mongo.Database, collection
 				{Key: "updatedAt", Value: -1},
 				{Key: "_id", Value: -1},
 			},
-			Options: options.Index().SetName("notes_user_updated_at_desc"),
+			Options: options.Index().SetName("notes_user_pinned_updated_at_desc"),
 		},
 		{
 			Keys: bson.D{

@@ -16,12 +16,14 @@ import (
 )
 
 type OAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
-	AuthURL      string
-	TokenURL     string
-	UserInfoURL  string
+	ClientID           string
+	ClientSecret       string
+	RedirectURL        string
+	AuthURL            string
+	TokenURL           string
+	UserInfoURL        string
+	SuccessRedirectURL string
+	AllowDevLogin      bool
 }
 
 type Handler struct {
@@ -60,6 +62,11 @@ func (handler *Handler) RegisterRoutes(router gin.IRoutes) {
 
 func (handler *Handler) login(ctx *gin.Context) {
 	if err := handler.config.validate(); err != nil {
+		if handler.config.AllowDevLogin {
+			handler.devLogin(ctx)
+			return
+		}
+
 		ctx.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "OAuth is not configured"})
 		return
 	}
@@ -118,7 +125,7 @@ func (handler *Handler) callback(ctx *gin.Context) {
 
 	http.SetCookie(ctx.Writer, sessionCookie)
 	http.SetCookie(ctx.Writer, handler.manager.ClearStateCookie())
-	ctx.Redirect(http.StatusFound, "/")
+	ctx.Redirect(http.StatusFound, handler.successRedirectURL())
 }
 
 func (handler *Handler) logout(ctx *gin.Context) {
@@ -146,6 +153,30 @@ func (handler *Handler) authURL(state string) string {
 	values.Set("state", state)
 
 	return handler.config.AuthURL + "?" + values.Encode()
+}
+
+func (handler *Handler) devLogin(ctx *gin.Context) {
+	sessionCookie, err := handler.manager.SessionCookie(User{
+		ID:    "dev:local-user",
+		Email: "local@example.test",
+		Name:  "Local Developer",
+	})
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		return
+	}
+
+	http.SetCookie(ctx.Writer, sessionCookie)
+	ctx.Redirect(http.StatusFound, handler.successRedirectURL())
+}
+
+func (handler *Handler) successRedirectURL() string {
+	redirectURL := strings.TrimSpace(handler.config.SuccessRedirectURL)
+	if redirectURL == "" {
+		return "/"
+	}
+
+	return redirectURL
 }
 
 func (handler *Handler) exchangeCode(ctx context.Context, code string) (tokenResponse, error) {

@@ -14,6 +14,7 @@ import (
 const (
 	defaultEnvironment        = "development"
 	defaultHTTPAddr           = "localhost:8080"
+	defaultFrontendURL        = "http://localhost:4200"
 	defaultMongoDatabase      = "notes"
 	defaultMongoCollection    = "notes"
 	defaultAllowedOrigins     = "http://localhost:4200"
@@ -30,6 +31,7 @@ const (
 type Config struct {
 	Environment         string
 	HTTPAddr            string
+	FrontendURL         string
 	MongoURI            string
 	MongoDatabase       string
 	MongoCollection     string
@@ -79,6 +81,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Environment:         getEnv("APP_ENV", defaultEnvironment),
 		HTTPAddr:            getEnv("HTTP_ADDR", defaultHTTPAddr),
+		FrontendURL:         getEnv("FRONTEND_URL", defaultFrontendURL),
 		MongoURI:            strings.TrimSpace(os.Getenv("MONGODB_URI")),
 		MongoDatabase:       getEnv("MONGODB_DATABASE", defaultMongoDatabase),
 		MongoCollection:     getEnv("MONGODB_COLLECTION", defaultMongoCollection),
@@ -111,6 +114,10 @@ func (cfg Config) Validate() error {
 
 	if strings.TrimSpace(cfg.HTTPAddr) == "" {
 		return errors.New("HTTP_ADDR is required")
+	}
+
+	if strings.TrimSpace(cfg.FrontendURL) == "" {
+		return errors.New("FRONTEND_URL is required")
 	}
 
 	if strings.TrimSpace(cfg.MongoDatabase) == "" {
