@@ -52,6 +52,7 @@ import { CreateNoteRequest } from '../data-access/note.models';
       margin: 0 auto 32px;
       max-width: 680px;
       padding: 16px;
+      width: min(100%, 680px);
     }
 
     .composer-chrome {
@@ -102,6 +103,7 @@ import { CreateNoteRequest } from '../data-access/note.models';
       color: var(--notion-charcoal);
       line-height: 1.55;
       min-height: 84px;
+      max-height: 42vh;
     }
 
     .composer-actions {
@@ -131,6 +133,7 @@ import { CreateNoteRequest } from '../data-access/note.models';
       background: var(--notion-surface);
       border: 1px solid var(--notion-hairline-strong);
       border-radius: 9999px;
+      flex: 0 0 auto;
       height: 22px;
       position: relative;
       transition: background 120ms ease, border-color 120ms ease;
@@ -175,6 +178,7 @@ import { CreateNoteRequest } from '../data-access/note.models';
       font-weight: 500;
       min-height: 40px;
       padding: 0 18px;
+      white-space: nowrap;
     }
 
     button:hover:not(:disabled) {
@@ -187,13 +191,40 @@ import { CreateNoteRequest } from '../data-access/note.models';
       cursor: not-allowed;
     }
 
-    @media (max-width: 520px) {
+    @media (max-width: 820px) {
+      .composer {
+        margin-bottom: 28px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .composer {
+        border-radius: 10px;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding: 14px;
+      }
+
+      input {
+        font-size: 1.05rem;
+      }
+
+      textarea {
+        min-height: 112px;
+      }
+
       .composer-actions {
         align-items: stretch;
         flex-direction: column;
+        gap: 14px;
+      }
+
+      .pin-toggle {
+        min-height: 28px;
       }
 
       button {
+        min-height: 44px;
         width: 100%;
       }
     }

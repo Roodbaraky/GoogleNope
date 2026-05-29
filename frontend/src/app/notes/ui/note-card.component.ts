@@ -31,6 +31,7 @@ import { Note } from '../data-access/note.models';
       min-height: 148px;
       padding: 16px;
       transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, background 120ms ease;
+      width: 100%;
     }
 
     .note-card:hover,
@@ -89,6 +90,22 @@ import { Note } from '../data-access/note.models';
       align-self: end;
       color: var(--notion-steel);
       font-size: 0.78rem;
+    }
+
+    @media (max-width: 640px) {
+      .note-card {
+        border-radius: 10px;
+        min-height: 132px;
+        padding: 14px;
+      }
+
+      h2 {
+        font-size: 0.96rem;
+      }
+
+      p {
+        -webkit-line-clamp: 5;
+      }
     }
   `,
 })

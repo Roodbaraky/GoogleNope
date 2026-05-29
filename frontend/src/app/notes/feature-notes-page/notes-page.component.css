@@ -40,6 +40,7 @@ h1 {
   align-items: center;
   display: flex;
   gap: 12px;
+  min-width: 0;
 }
 
 .session-actions img {
@@ -132,13 +133,88 @@ button.secondary:hover {
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
 }
 
-@media (max-width: 560px) {
+@media (max-width: 900px) {
+  .shell {
+    padding: 22px clamp(18px, 4vw, 32px) 44px;
+  }
+
+  .topbar,
+  .note-section {
+    max-width: 760px;
+  }
+
+  .note-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    background:
+      linear-gradient(180deg, var(--notion-surface) 0, var(--notion-surface-soft) 220px),
+      var(--notion-surface-soft);
+    padding: 18px 14px 36px;
+  }
+
   .topbar {
     align-items: stretch;
     flex-direction: column;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+
+  h1 {
+    font-size: 1.65rem;
+  }
+
+  .topbar p {
+    font-size: 0.9rem;
   }
 
   .session-actions {
     justify-content: space-between;
+  }
+
+  .session-actions img {
+    height: 34px;
+    width: 34px;
+  }
+
+  button {
+    min-height: 44px;
+  }
+
+  .state,
+  .login-panel {
+    border-radius: 10px;
+    padding: 20px 16px;
+  }
+
+  .note-section {
+    margin-bottom: 26px;
+  }
+
+  .note-grid {
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .shell {
+    padding-inline: 10px;
+  }
+
+  .session-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .session-actions img {
+    display: none;
+  }
+
+  .session-actions button {
+    width: 100%;
   }
 }

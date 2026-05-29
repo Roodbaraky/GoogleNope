@@ -75,6 +75,7 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
       color: var(--notion-charcoal);
       line-height: 1.55;
       min-height: 320px;
+      max-height: 56vh;
       resize: vertical;
       white-space: pre-wrap;
     }
@@ -108,6 +109,7 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
       background: var(--notion-surface);
       border: 1px solid var(--notion-hairline-strong);
       border-radius: 9999px;
+      flex: 0 0 auto;
       height: 22px;
       position: relative;
       transition: background 120ms ease, border-color 120ms ease;
@@ -152,6 +154,7 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
       font-weight: 500;
       min-height: 40px;
       padding: 0 16px;
+      white-space: nowrap;
     }
 
     button:hover {
@@ -163,14 +166,57 @@ import { Note, UpdateNoteRequest } from '../data-access/note.models';
       color: var(--notion-error);
     }
 
+    @media (max-width: 820px) {
+      .editor {
+        max-width: 680px;
+      }
+
+      textarea {
+        min-height: 280px;
+      }
+    }
+
     @media (max-width: 560px) {
+      .backdrop {
+        align-items: flex-end;
+        padding: 0;
+      }
+
+      .editor {
+        border-bottom: 0;
+        border-radius: 12px 12px 0 0;
+        max-height: min(92vh, 760px);
+        padding: 16px 14px max(16px, env(safe-area-inset-bottom));
+        width: 100%;
+      }
+
+      input {
+        font-size: 1.18rem;
+      }
+
+      textarea {
+        min-height: 44vh;
+        max-height: 58vh;
+      }
+
       .editor-actions {
         align-items: stretch;
         flex-direction: column;
+        gap: 14px;
+      }
+
+      label {
+        min-height: 28px;
       }
 
       .buttons {
-        justify-content: flex-end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      button {
+        min-height: 44px;
       }
     }
   `,
